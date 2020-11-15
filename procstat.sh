@@ -12,24 +12,30 @@ case $# in
     ;;
     2)
         echo "Estou no 2"
-        if (($#!=0)); then
+       
             
             
-            cd /proc
-            for i in $(ls | grep -E '^[0-9]+$')
-            do
-            if [ -d "/proc/$i" ]; then
-                cd /proc/$i
-                cat comm
-                cat status | grep VmSize
-                cat status | grep VmRSS
-                echo -e "\n"
-
-            else
+        cd /proc
+        for i in $(ls | grep -E '^[0-9]+$')
+        do
+        if [ -d "/proc/$i" ]; then
+            cd /proc/$i
+            cat comm
+            cat status | grep VmSize
+            cat status | grep VmRSS
+            #chmod 755 io
+            if [ -r io ]; then
+                cat io | grep rchar
+                cat io | grep wchar
+            else 
                 continue
             fi
-            done
+            echo -e "\n"
+
+        else
+            continue
         fi
+        done
     ;;
 
     3)
