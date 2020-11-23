@@ -3,8 +3,6 @@
 #Todos os direitos reservados 
 #João Bernardo Tavares Farias, nº98679
 #Artur Correia Romão, nº98470
-header=(COMM"\t\t"USER"\t\t"PID"\t\t"MEM"\t\t"RSS"\t\t"READB"\t\t"WRITEB"\t\t"RATER"\t\t"RATEW"\t\t"DATE)
-#echo -e ${header[@]}
 
 
 case $# in
@@ -26,7 +24,7 @@ case $# in
         if [ $opcao=="-c" ];then
             if [ -d "/proc/$i" ]; then
                 cd /proc/$i
-                cat comm | grep $string
+                cat comm | grep $string               #$(cat comm | grep $string)
             fi
         fi
         done
@@ -67,7 +65,7 @@ case $# in
     
     *)
         segundos=$1
-        echo $segundos
+        #echo $segundos
         cd /proc
         
         
@@ -75,33 +73,47 @@ case $# in
         do
         if [ -d "/proc/$i" ]; then
             cd /proc/$i
-            cat comm
-            cat status | grep VmSize
-            cat status | grep VmRSS
             if [ -r io ]; then
-                cat io | grep rchar
-                cat io | grep wchar
+                rchar_Inicial=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                wchar_Inicial=$(cat io | grep wchar | grep -o -E '[0-9]+')
             fi
-            echo -e "\n"
         fi
         done
         
         sleep $segundos
+        printf '%-30s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
         cd ..
-        
         for i in $(ls | grep -E '^[0-9]+$')
         do
         if [ -d "/proc/$i" ]; then
             cd /proc/$i
-            cat comm
-            cat status | grep VmSize
-            cat status | grep VmRSS
+            comm=$(cat comm)
+            user=$(ls -ld | awk '{print $3}')
+            data=$(ls -ld | awk '{print $6 " " $7 " " $8}')
+            VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
+            VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
+            PID=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
             if [ -r io ]; then
-                cat io | grep rchar
-                cat io | grep wchar
+                rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                wchar_Final=$(cat io | grep wchar | grep -o -E '[0-9]+')
+                Readb=$[ $rchar_Final-$rchar_Inicial ]
+                Writeb=$[ $wchar_Final-$wchar_Inicial ]
+                wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial})/${segundos}")
+                rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial})/${segundos}")
+            else
+                Readb="---"
+                Writeb="---"
+                wchar_Taxa="---"
+                rchar_Taxa="---"
+
             fi
-            echo -e "\n"
+            
+            printf '%-30s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID cona cona $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+            
         fi
         done
+
+        
+
     ;;
 esac
