@@ -18,34 +18,68 @@ case $# in
         string=$2
         modo=$1
         
+        if (( $segundos == 0 )); then
+            echo "O número de segundos dedve ser maior que 0"
+            exit 1
+        fi
         cd /proc
+        
+        i=0;
         for i in $(ls | grep -E '^[0-9]+$')
         do
-        if [ $opcao=="-c" ];then
-            if [ -d "/proc/$i" ]; then
-                cd /proc/$i
-                cat comm | grep $string               #$(cat comm | grep $string)
+        if [ -d "/proc/$i" ]; then
+            cd /proc/$i
+            if [ "$(grep -c ^$2 comm)" -ge 1 ]; then
+                if [ -r io ]; then
+                    rchar_Inicial[$i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                    wchar_Inicial[$i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
+                fi
+                i=$((i+1))
             fi
         fi
         done
-
+        echo $rchar_Inicial
+        echo $wchar_Inicial
         sleep $segundos
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
         cd ..
-
+        i=0
         for i in $(ls | grep -E '^[0-9]+$')
         do
-        if [ $opcao=="-c" ];then
-            if [ -d "/proc/$i" ]; then
-                cd /proc/$i
-                cat comm | grep $string
-                cat status | grep VmSize
-                cat status | grep VmRSS
-                if [ -r io ]; then
-                    cat io | grep rchar
-                    cat io | grep wchar
+        if [ -d "/proc/$i" ]; then
+            cd /proc/$i
+            if [ "$(grep -c ^$2 comm)" -ge 1 ]; then
+                comm=$(cat comm)
+                user=$(ls -ld | awk '{print $3}')
+                data=$(ls -ld | awk '{print $6 " " $7 " " $8}')
+                PID=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
+                
+                if [ "$(grep -c "VmRSS" status)" -ge 1 ]; then   
+                    VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
+                    VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
+                else
+                    VmSize="---"
+                    VmRSS="---"
                 fi
-                echo -e "\n"
-            fi
+                
+                if [ -r io ]; then
+                    rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                    wchar_Final=$(cat io | grep wchar | grep -o -E '[0-9]+')
+                    Readb=$(($rchar_Final-${rchar_Inicial[$i]}))
+                    Writeb=$(($wchar_Final-${wchar_Inicial[$i]}))
+                    wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial[$i]})/${segundos}")
+                    rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial[$i]})/${segundos}")
+                    i=$((i+1))
+                else
+                    Readb=0
+                    Writeb=0
+                    wchar_Taxa=0
+                    rchar_Taxa=0
+                fi
+                if [[ $Readb != 0  ]] || [[ $Writeb != 0 ]] || [[ $wchar_Taxa != 0 ]] || [[ $rchar_Taxa != 0 ]]; then
+                    printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+                fi
+            fi  
         fi
         done
     ;;
@@ -65,24 +99,30 @@ case $# in
     
     *)
         segundos=$1
-        #echo $segundos
+        if (( $segundos == 0 )); then
+            echo "O número de segundos dedve ser maior que 0"
+            exit 1
+        fi
         cd /proc
         
-        
+        i=0;
         for i in $(ls | grep -E '^[0-9]+$')
         do
         if [ -d "/proc/$i" ]; then
             cd /proc/$i
             if [ -r io ]; then
-                rchar_Inicial=$(cat io | grep rchar | grep -o -E '[0-9]+')
-                wchar_Inicial=$(cat io | grep wchar | grep -o -E '[0-9]+')
+                rchar_Inicial[$i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                wchar_Inicial[$i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
             fi
+            i=$((i+1))
         fi
         done
-        
+        echo $rchar_Inicial
+        echo $wchar_Inicial
         sleep $segundos
-        printf '%-30s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
         cd ..
+        i=0
         for i in $(ls | grep -E '^[0-9]+$')
         do
         if [ -d "/proc/$i" ]; then
@@ -90,30 +130,27 @@ case $# in
             comm=$(cat comm)
             user=$(ls -ld | awk '{print $3}')
             data=$(ls -ld | awk '{print $6 " " $7 " " $8}')
-            VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
-            VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
             PID=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
+            
+            if [ "$(grep -c "VmRSS" status)" -ge 1 ]; then   
+                VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
+                VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
+            fi
+            
             if [ -r io ]; then
                 rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
                 wchar_Final=$(cat io | grep wchar | grep -o -E '[0-9]+')
-                Readb=$[ $rchar_Final-$rchar_Inicial ]
-                Writeb=$[ $wchar_Final-$wchar_Inicial ]
-                wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial})/${segundos}")
-                rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial})/${segundos}")
-            else
-                Readb="---"
-                Writeb="---"
-                wchar_Taxa="---"
-                rchar_Taxa="---"
-
+                Readb=$(($rchar_Final-${rchar_Inicial[$i]}))
+                Writeb=$(($wchar_Final-${wchar_Inicial[$i]}))
+                wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial[$i]})/${segundos}")
+                rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial[$i]})/${segundos}")
+                i=$((i+1))
             fi
-            
-            printf '%-30s %-10s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID cona cona $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
-            
+            if [ -r io ]; then
+                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+            fi  
         fi
         done
-
-        
 
     ;;
 esac
