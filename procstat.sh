@@ -2,7 +2,7 @@
 #Sistemas Operativos 2020/2021
 #Todos os direitos reservados 
 #7/12/2020
-#João Bernardo Tavares Farias, nº986799
+#João Bernardo Tavares Farias, nº98679
 #Artur Correia Romão, nº98470
 
 
@@ -271,7 +271,7 @@ case $# in
                 sleep $segundos
                 cd ..
                 i=0
-                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+                x=0
                 for proc in $(ls | grep -E '^[0-9]+$')
                 do
                     if [ -d "/proc/$proc" ]; then
@@ -296,11 +296,14 @@ case $# in
                                 i=$((i+1))
                             fi
                             if [ -r io ]; then
-                                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+                                array[x]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
+                                x=$((x+1))
                             fi
                         fi  
                     fi
                 done
+                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k1n
             ;;
             
             u) 
@@ -328,7 +331,7 @@ case $# in
                 sleep $segundos
                 cd ..
                 i=0
-                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+                x=0
                 for proc in $(ls | grep -E '^[0-9]+$')
                 do
                     if [ -d "/proc/$proc" ]; then
@@ -362,24 +365,29 @@ case $# in
                                 wchar_Taxa="---"
                                 rchar_Taxa="---"
                             fi
-                            printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
-                            
+                            array[x]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
+                            x=$((x+1))
                         fi  
                     fi
                 done
+                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k1n
             ;;
             esac
         done
     
     ;;
 
-    4)
-        while getopts "se" options; do
-            case $options in
-            s|e) 
-                echo $# $1 $2 $3 $4
+    4) #TODO
+        while getopts "mtdw:c" options; do 
+            case $option in
+                m|c)
                 ;;
-            u)  echo "Estou no u"
+                t|c)
+                ;;
+                d|c)
+                ;;
+                w|c)
                 ;;
             esac
         done
@@ -486,9 +494,9 @@ case $# in
         fi
         done
         sleep $segundos
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
         cd ..
         i=0
+        x=0
         for proc in $(ls | grep -E '^[0-9]+$')
         do
         if [ -d "/proc/$proc" ]; then
@@ -512,10 +520,13 @@ case $# in
                 i=$((i+1))
             fi
             if [ -r io ]; then
-                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+                array[x]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
+                x=$((x+1))
             fi  
         fi
         done
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k1n
         
     ;;
 esac
