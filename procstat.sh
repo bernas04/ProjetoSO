@@ -2,7 +2,7 @@
 #Sistemas Operativos 2020/2021
 #Todos os direitos reservados 
 #7/12/2020
-#João Bernardo Tavares Farias, nº98679
+#João Bernardo Tavares Farias, nº986799
 #Artur Correia Romão, nº98470
 
 
@@ -11,7 +11,7 @@ case $# in
         echo "Número de argumentos inválido"
     ;;
     3)
-        while getopts "c:u" options; do
+        while getopts "cu" options; do
             case $options in 
             c)
                 segundos=$3
@@ -27,7 +27,7 @@ case $# in
                 do
                 if [ -d "/proc/$i" ]; then
                     cd /proc/$i
-                    if [ "$(grep -c $2 comm)" -ge 1 ]; then
+                    if [ "$(grep -c ^$2 comm)" -ge 1 ]; then
                         if [ -r io ]; then
                             rchar_Inicial[$i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
                             wchar_Inicial[$i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
@@ -44,7 +44,7 @@ case $# in
                 do
                     if [ -d "/proc/$i" ]; then
                         cd /proc/$i
-                        if [ "$(grep -c $2 comm)" -ge 1 ]; then
+                        if [ "$(grep -c ^$2 comm)" -ge 1 ]; then
                             comm=$(cat comm)
                             user=$(ls -ld | awk '{print $3}')
                             data=$(ls -ld | awk '{print $6 " " $7 " " $8}')
@@ -70,8 +70,6 @@ case $# in
                     fi
                 done
             ;;
-            
-            
             
             u) 
                 segundos=$3
@@ -112,6 +110,9 @@ case $# in
                             if [ "$(grep -c "VmRSS" status)" -ge 1 ]; then   
                                 VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
                                 VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
+                            else 
+                                VmSize="---"
+                                VmRSS="---"
                             fi
                             if [ -r io ]; then
                                 rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
@@ -121,10 +122,16 @@ case $# in
                                 wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial[$i]})/${segundos}")
                                 rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial[$i]})/${segundos}")
                                 i=$((i+1))
+                            else
+                                rchar_Final="---" 
+                                wchar_Final="---" 
+                                Readb="---"
+                                Writeb="---"
+                                wchar_Taxa="---"
+                                rchar_Taxa="---"
                             fi
-                            if [ -r io ]; then
-                                printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
-                            fi
+                            printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' $comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data
+                            
                         fi  
                     fi
                 done
@@ -135,11 +142,57 @@ case $# in
     ;;
 
     4)
-        echo "Estou no 4"
+        while getopts "se" options; do
+            case $options in
+            s|e) 
+                echo $# $1 $2 $3 $4
+                ;;
+            u)  echo "Estou no u"
+                ;;
+            esac
+        done
+
     ;;
 
     5)
-        echo "Estou no 5"
+    
+        while getopts "se" options; do
+            case $options in
+            s|e) 
+                segundos=$5
+                start=$(date -d "$2" +%s);
+                end=$(date -d "$4" +%s);
+                if ((start > end)) ; then
+                    echo "A data final tem que ser posterior à data inicial!"
+                    exit 1
+                fi
+                cd /proc
+                for i in $(ls | grep -E '^[0-9]+$')
+                do
+                if [ -d "/proc/$i" ]; then
+                    cd /proc/$i
+                    data=$(LC_ALL=EN_us.utf8 ls -ld /proc/$i | awk '{print $6 " " $7 " " $8}')
+                    dataSeg=$(date -d "$data" +%s)
+                   
+                    #LC_TIME=EN_us.UTF-8;
+                    #data =$(date -d "$data" +%s)
+                    
+                    #if [ ... ]; then
+                        #if [ -r io ]; then
+                          #  rchar_Inicial[$i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
+                         #   wchar_Inicial[$i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
+                        #fi
+                        #i=$((i+1))
+                    #fi
+                fi
+                done
+                
+
+                ;;
+            u)  echo "Estou no S"
+                ;;
+            esac
+        done
     ;;
 
     7)
@@ -184,7 +237,6 @@ case $# in
                 VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
                 VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
             fi
-            
             if [ -r io ]; then
                 rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
                 wchar_Final=$(cat io | grep wchar | grep -o -E '[0-9]+')
@@ -199,6 +251,5 @@ case $# in
             fi  
         fi
         done
-
     ;;
 esac
