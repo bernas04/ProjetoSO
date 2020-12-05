@@ -6,13 +6,13 @@
 #Artur Correia Romão, nº98470
 
 
-declare -a pid
-
 start=0
 end=$(date +%s)
-string="**"
+string=""
 procView=""
 user="*"
+o=0
+r=0
 
 while getopts ":mtdwrs:e:c:p:u:" option; do
     case $option in
@@ -25,7 +25,7 @@ while getopts ":mtdwrs:e:c:p:u:" option; do
         end=$(date -d "$endDate" +%s);
     ;;
     c)
-        string=$OPTARG*
+        string=$OPTARG
     ;;
     u)
         user=$OPTARG
@@ -34,22 +34,27 @@ while getopts ":mtdwrs:e:c:p:u:" option; do
         procView=$OPTARG
     ;;
     m)
-        o="4"
+        o=4
     ;;
     t)
-        o="5"
+        o=5
     ;;
     d)
-        o="8"
+        o=8
     ;;
     w)
-        o="9"
+        o=9
     ;;
     r)
-        r="1"
+        r=1
+    ;;
+    \?)
+        echo "ERROR: Wrong option"
+        exit 1
     ;;
     esac
 done
+
 segundos=${@: -1}
 if (($segundos<=0)); then
     echo "Número inválido de segundos"
@@ -57,19 +62,21 @@ if (($segundos<=0)); then
 fi
 
 
+
+
 i=0
 cd /proc
 for proc in $(ls | grep -E '^[0-9]+$')
 do
-if [ -d "/proc/$proc" ]; then
+if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
     cd /proc/$proc
     comm=$(cat comm)
     userP=$(ls -ld | awk '{print $3}')
-    if [[ $userP == $user ]] && [[ $comm == $string ]]; then
+    if [[ $userP == $user ]] && [[ $comm =~ $string ]]; then
         data=$(LC_ALL=EN_us.utf8 ls -ld /proc/$proc | awk '{print $6 " " $7 " " $8}')
         dataSeg=$(date -d "$data" +%s)
         if (($start<$dataSeg)) && (($end>$dataSeg)); then
-            if [ -r io ]; then 
+            if [ "$(grep -c "VmRSS" status)" -ge 1 ] & [ -r io ]; then 
                 pid[i]=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
                 i=$((i+1))
             fi
@@ -79,26 +86,28 @@ fi
 done
 
 ###GUARDAR OS VALORES DE rcharInicial e de wcharInicial num array
+pidS=($(printf "%s\n" "${pid[@]}" | sort -u))
+
 i=0
-echo ${pid[@]}
-for pid in ${pid[@]}
+for pid in ${pidS[@]}
 do
-if [ -d "/proc/$proc" ]; then
+if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
     cd /proc/$pid
     rchar_Inicial[i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
     wchar_Inicial[i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
     i=$((i+1))
 fi
 done
+
 procI=$i
+
 sleep $segundos
 
 ##SEGUNDA LEITURA
 i=0
-echo ${pid[@]}
-for pid in ${pid[@]}
+for pid in ${pidS[@]}
 do
-if [ -d "/proc/$proc" ]; then
+if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
     cd /proc/$pid
     comm=$(cat comm)
     user=$(ls -ld | awk '{print $3}')
@@ -116,16 +125,55 @@ if [ -d "/proc/$proc" ]; then
     rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial[i]})/${segundos}")
     array[i]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
     i=$((i+1))
-    procF=$i
 fi
 done
+procF=$i
 
-#if (($procI==$procF)); then
+
+######PRINT
+if ((${#array[@]}==0)); then
+    echo "WARNING: No process found"
+    exit 0
+fi
+
+if [[ -n $procView ]]; then
+    if ((${#array[@]}<$procView)); then
+        echo "WARNING: número de processos a mostrar alterado"
+        procView=${#array[@]}
+    fi
+else
+    procView=${#array[@]}
+fi
+
+
+#t=${array[@]:1}
+
+
+if (($procI==$procF)); then
     printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
-    printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]}
-#fi
+    if (($o==4)) && (($r==0)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k4rn | head -n $procView
+    elif (($o==5)) && (($r==0)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k5rn | head -n $procView
+    elif (($o==8)) && (($r==0)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k8rn | head -n $procView
+    elif (($o==9)) && (($r==0)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k9rn | head -n $procView
+    elif (($o==4)) && (($r==1)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k4n | head -n $procView
+    elif (($o==5)) && (($r==1)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k5n | head -n $procView
+    elif (($o==8)) && (($r==1)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k8n | head -n $procView
+    elif (($o==9)) && (($r==1)); then
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k9n | head -n $procView
+    else
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | head -n $procView
+    fi 
+fi
 
-
+#for ((i=1;i<${#array[@]};i++)); do          
+#done
 
 
 
