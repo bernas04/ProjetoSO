@@ -78,7 +78,7 @@ fi
 
 segundos=${@: -1}
 if (($segundos<=0)); then
-    echo "ERROR: Invalid arguments number"
+    echo "ERROR: Invalid number of seconds"
     exit 1
 fi
 
@@ -89,7 +89,7 @@ fi
 
 
 if (($start>$end)); then
-    echo "ERROR: Final data must be greater than inicial data"
+    echo "ERROR: Final date must be greater than inicial date"
     exit 1
 fi
 
@@ -106,7 +106,7 @@ if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
     if [[ $userP == $user ]] && [[ $comm =~ $string ]]; then
         data=$(LC_ALL=EN_us.utf8 ls -ld /proc/$proc | awk '{print $6 " " $7 " " $8}')
         dataSeg=$(date -d "$data" +%s)
-        if (($start<$dataSeg)) && (($end>$dataSeg)); then
+        if (($start<=$dataSeg)) && (($end>=$dataSeg)); then
             if [ "$(grep -c "VmRSS" status)" -ge 1 ] && [ -r io ]; then 
                 pid[i]=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
                 i=$((i+1))
@@ -116,7 +116,7 @@ if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
 fi
 done
 
-###GUARDAR OS VALORES DE rcharInicial e de wcharInicial num array
+###GUARDAR OS VALORES DE rcharInicial e de wcharInicial num allProc
 pidS=($(printf "%s\n" "${pid[@]}" | sort -u))
 
 i=0
@@ -143,62 +143,62 @@ if [ -e "/proc/$pid" ] && [ -d "/proc/$pid" ]; then
     comm=$(cat comm)
     user=$(ls -ld | awk '{print $3}')
     data=$(ls -ld | awk '{print $6 " " $7 " " $8}')
-    PID=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
-    if [ "$(grep -c "VmRSS" status)" -ge 1 ]; then   
-        VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
-        VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
-    fi
+    PID=$(cat status | grep ^Pid | grep -o -E '[0-9]+') 
+    VmSize=$(cat status | grep VmSize | grep -o -E '[0-9]+')
+    VmRSS=$(cat status | grep VmRSS | grep -o -E '[0-9]+')
     rchar_Final=$(cat io | grep rchar | grep -o -E '[0-9]+')
     wchar_Final=$(cat io | grep wchar | grep -o -E '[0-9]+')
-    Readb=$(($rchar_Final-${rchar_Inicial[i]}))
-    Writeb=$(($wchar_Final-${wchar_Inicial[i]}))
+    Readb=$(cat io | grep rchar | grep -o -E '[0-9]+')
+    Writeb=$(cat io | grep wchar | grep -o -E '[0-9]+')
     wchar_Taxa=$(bc <<< "scale = 2; (${wchar_Final}-${wchar_Inicial[i]})/${segundos}")
     rchar_Taxa=$(bc <<< "scale = 2; (${rchar_Final}-${rchar_Inicial[i]})/${segundos}")
-    array[i]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
+    allProc[i]="$comm $user $PID $VmSize $VmRSS $Readb $Writeb $rchar_Taxa $wchar_Taxa $data"
     i=$((i+1))
 fi
 done
 procF=$i
 
 
-######PRINT
-if ((${#array[@]}==0)); then
+######ULTIMAS VALIDAÇÕEES
+if ((${#allProc[@]}==0)); then
     echo "WARNING: No process found"
     exit 0
 fi
 
 if [[ -n $procView ]]; then
-    if ((${#array[@]}<$procView)); then
-        echo "WARNING: número de processos a mostrar alterado"
-        procView=${#array[@]}
+    if ((${#allProc[@]}<$procView)); then
+        echo "WARNING: number of proccess to be shown altered"
+        procView=${#allProc[@]}
     fi
 else
-    procView=${#array[@]}
+    procView=${#allProc[@]}
 fi
 
 
-#t=${array[@]:1}
-
+###################### PRINT
 
 if (($procI==$procF)); then
     printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s\n' COMM USER PID MEM RSS READB WRITEB RATER RATEW DATE
     if (($o==4)) && (($r==0)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k4rn | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k4rn | head -n $procView
     elif (($o==5)) && (($r==0)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k5rn | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k5rn | head -n $procView
     elif (($o==8)) && (($r==0)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k8rn | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k8rn | head -n $procView
     elif (($o==9)) && (($r==0)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k9rn | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k9rn | head -n $procView
     elif (($o==4)) && (($r==1)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k4n | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k4n | head -n $procView
     elif (($o==5)) && (($r==1)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k5n | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k5n | head -n $procView
     elif (($o==8)) && (($r==1)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k8n | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k8n | head -n $procView
     elif (($o==9)) && (($r==1)); then
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | sort -k9n | head -n $procView
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k9n | head -n $procView
     else
-        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | head -n $procView
-    fi 
+        printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${allProc[@]} | sort -k1n | head -n $procView
+    fi
+else 
+    echo "ERROR: Can't read all proccesses. Please try again"
+    exit 1
 fi
