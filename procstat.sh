@@ -13,6 +13,8 @@ procView=""
 user="*"
 o=0
 r=0
+valida=()
+reverse=()
 
 while getopts ":mtdwrs:e:c:p:u:" option; do
     case $option in
@@ -35,18 +37,23 @@ while getopts ":mtdwrs:e:c:p:u:" option; do
     ;;
     m)
         o=4
+        valida+=("m")
     ;;
     t)
         o=5
+        valida+=("t")
     ;;
     d)
         o=8
+        valida+=("d")
     ;;
     w)
         o=9
+        valida+=("w")
     ;;
     r)
         r=1
+        reverse+=("r")
     ;;
     \?)
         echo "ERROR: Wrong option"
@@ -55,15 +62,39 @@ while getopts ":mtdwrs:e:c:p:u:" option; do
     esac
 done
 
+shift $((OPTIND -1))
+
+##VALIDAÇÕES
+
+if ((${#valida[@]}>=2)); then
+    echo "ERROR: Invalid order mode"
+    exit 1
+fi
+
+if ((${#reverse[@]}>=2)); then
+    echo "ERROR: Invalid order mode"
+    exit 1
+fi
+
 segundos=${@: -1}
 if (($segundos<=0)); then
-    echo "Número inválido de segundos"
+    echo "ERROR: Invalid arguments number"
+    exit 1
+fi
+
+if [[ -n $procView ]] && [[ $procView -lt 1 ]]; then
+    echo "ERROR: Invalid number of proccess to show"
     exit 1
 fi
 
 
+if (($start>$end)); then
+    echo "ERROR: Final data must be greater than inicial data"
+    exit 1
+fi
 
 
+#####verificar os pids que obedecem às seguintes condições
 i=0
 cd /proc
 for proc in $(ls | grep -E '^[0-9]+$')
@@ -76,7 +107,7 @@ if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
         data=$(LC_ALL=EN_us.utf8 ls -ld /proc/$proc | awk '{print $6 " " $7 " " $8}')
         dataSeg=$(date -d "$data" +%s)
         if (($start<$dataSeg)) && (($end>$dataSeg)); then
-            if [ "$(grep -c "VmRSS" status)" -ge 1 ] & [ -r io ]; then 
+            if [ "$(grep -c "VmRSS" status)" -ge 1 ] && [ -r io ]; then 
                 pid[i]=$(cat status | grep ^Pid | grep -o -E '[0-9]+')
                 i=$((i+1))
             fi
@@ -91,7 +122,7 @@ pidS=($(printf "%s\n" "${pid[@]}" | sort -u))
 i=0
 for pid in ${pidS[@]}
 do
-if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
+if [ -e "/proc/$pid" ] && [ -d "/proc/$pid" ]; then
     cd /proc/$pid
     rchar_Inicial[i]=$(cat io | grep rchar | grep -o -E '[0-9]+')
     wchar_Inicial[i]=$(cat io | grep wchar | grep -o -E '[0-9]+')
@@ -107,7 +138,7 @@ sleep $segundos
 i=0
 for pid in ${pidS[@]}
 do
-if [ -e "/proc/$proc" ] && [ -d "/proc/$proc" ]; then
+if [ -e "/proc/$pid" ] && [ -d "/proc/$pid" ]; then
     cd /proc/$pid
     comm=$(cat comm)
     user=$(ls -ld | awk '{print $3}')
@@ -171,10 +202,3 @@ if (($procI==$procF)); then
         printf '%-35s %-16s %-10s %-10s %-10s %-15s %-15s %-15s %-20s %-1s %-1s %-1s\n' ${array[@]} | head -n $procView
     fi 
 fi
-
-#for ((i=1;i<${#array[@]};i++)); do          
-#done
-
-
-
-
